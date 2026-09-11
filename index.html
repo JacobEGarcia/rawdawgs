@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rawdawgs</title>
+<style>
+:root{--bg:#171009;--card:#211609;--line:#3a2712;--ink:#f5ead6;--dim:#b39a76;--accent:#e8933a;--bad:#d95e4a}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:26px 18px}
+h1{font-size:28px;letter-spacing:9px;color:var(--accent);text-shadow:0 0 24px rgba(232,147,58,.3)}
+.sub{color:var(--dim);font-size:11px;letter-spacing:2.5px;margin-top:6px;text-transform:uppercase}
+#grill{width:min(560px,94vw);margin:18px 0;background:repeating-linear-gradient(90deg,#1c130a 0 14px,#140d06 14px 28px);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap;min-height:130px;align-items:center}
+.dog{font-size:44px;cursor:pointer;transition:transform .2s;position:relative;text-align:center}
+.dog .t{font-size:10px;color:var(--dim);position:absolute;left:50%;transform:translateX(-50%);bottom:-14px;white-space:nowrap}
+.dog:hover{transform:scale(1.15)}
+#hud{font-size:12.5px;color:var(--dim);letter-spacing:1.5px;text-align:center;line-height:2}
+#hud b{color:var(--accent)}
+#row{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+button{cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:10px;color:var(--ink);font-family:inherit;font-size:12.5px;padding:12px 18px;letter-spacing:1px;transition:.15s}
+button:hover:not(:disabled){border-color:var(--accent);transform:translateY(-2px)}
+button:disabled{opacity:.4}
+#msg{margin-top:10px;font-size:12px;color:var(--dim);letter-spacing:1px;min-height:18px;text-align:center;width:min(440px,92vw)}
+</style>
+</head>
+<body>
+<h1>RAWDAWGS</h1>
+<div class="sub">gas station grill master &middot; the rollers never stop</div>
+<div id="grill"></div>
+<div id="hud">SERVED <b id="served">0</b> &middot; TIPS <b id="tips">$0</b> &middot; HEALTH INSPECTOR SIGHTINGS <b id="insp">0</b></div>
+<div id="row">
+  <button id="stock">STOCK ROLLER</button>
+  <button id="shift">END SHIFT</button>
+</div>
+<div id="msg">dogs cook on the rollers. click a golden dog to serve it. serve raw, lose tips. let them burn, the inspector circles.</div>
+<script>
+const $=id=>document.getElementById(id);
+const grill=$('grill');
+let served=0,tips=0,insp=0,dogs=[],over=false;
+const STAGES=[['🌭','raw',0],['🌭','cooking',4],['🌭','GOLDEN',8],['🌭','overdone',13],['🌭','BURNT',17]];
+function stock(){
+  if(over)return;
+  if(dogs.length>=6){$('msg').textContent='the rollers are full. physics and health codes agree.';return;}
+  const el=document.createElement('div');el.className='dog';
+  const d={el,t:0};
+  el.onclick=()=>serve(d);
+  grill.appendChild(el);dogs.push(d);renderDog(d);
+}
+function renderDog(d){
+  let s=STAGES[0];
+  if(d.t>=17)s=STAGES[4];else if(d.t>=13)s=STAGES[3];else if(d.t>=8)s=STAGES[2];else if(d.t>=4)s=STAGES[1];
+  d.el.childNodes[0]&&(d.el.textContent='');
+  d.el.textContent=s[0];
+  const t=document.createElement('div');t.className='t';t.textContent=s[1];
+  d.el.appendChild(t);
+  if(s[1]==='GOLDEN')d.el.style.filter='drop-shadow(0 0 10px gold)';
+  else if(s[1]==='BURNT')d.el.style.filter='grayscale(1)';
+  else d.el.style.filter='';
+}
+function serve(d){
+  if(over)return;
+  let tip=0,note='';
+  if(d.t<4){tip=-2;note='you served it RAW. the customer ascends to a higher plane of confusion. -$2';}
+  else if(d.t<8){tip=1;note='a bit under. the customer shrugs. +$1';}
+  else if(d.t<13){tip=5;served++;note='GOLDEN. snapped casing, perfect sheen. +$5 tip.';}
+  else if(d.t<17){tip=2;served++;note='overdone but honest. +$2';}
+  else{tip=0;note='burnt beyond the law. tossed to the parking lot crows.';}
+  tips=Math.max(0,tips+tip);
+  $('served').textContent=served;$('tips').textContent='$'+tips;
+  $('msg').textContent=note;
+  d.el.remove();dogs=dogs.filter(x=>x!==d);
+}
+setInterval(()=>{
+  if(over)return;
+  dogs.forEach(d=>{d.t+=.5;renderDog(d);});
+  const burnt=dogs.filter(d=>d.t>=17).length;
+  if(burnt>=3){insp++;$('insp').textContent=insp;dogs=dogs.filter(d=>d.t<17);renderAll();$('msg').textContent='HEALTH INSPECTOR SIGHTING #'+insp+'. The grill is wiped. The dogs are gone. The crows testify against you.';}
+  if(insp>=3){over=true;$('msg').textContent='SHUT DOWN. Final tally: '+served+' served, $'+tips+' tips. The rollers stop for the first time in a decade.';}
+},500);
+function renderAll(){grill.innerHTML='';dogs.forEach(d=>{grill.appendChild(d.el);renderDog(d);});}
+$('stock').onclick=stock;
+$('shift').onclick=()=>{if(!over){over=true;$('msg').textContent='SHIFT OVER. '+served+' dawgs served, $'+tips+' in tips, '+insp+' inspector sightings. The rollers await your return.';}};
+stock();stock();stock();
+</script>
+</body>
+</html>
